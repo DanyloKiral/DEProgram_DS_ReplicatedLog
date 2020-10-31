@@ -1,12 +1,11 @@
-from flask import Flask
-
-server = Flask(__name__)
-
-
-@server.route("/")
-def hello():
-    return "Hello World!"
+from flask import make_response, jsonify, current_app
+from flask.views import MethodView
 
 
-if __name__ == "__main__":
-    server.run(host='0.0.0.0')
+class SecondaryNodeApi(MethodView):
+    def __init__(self):
+        self.message_service = current_app.container.message_service_provider()
+
+    def get(self):
+        current_messages = self.message_service.get()
+        return make_response(jsonify(current_messages), 200)

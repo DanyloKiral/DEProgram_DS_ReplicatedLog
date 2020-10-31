@@ -14,4 +14,4 @@ RUN pip install -r requirements.txt
 COPY src/ .
 
 # command to run on container start
-CMD [ "python", "./secondary_node_api.py" ]
+CMD [ "python", "./main.py" ]
