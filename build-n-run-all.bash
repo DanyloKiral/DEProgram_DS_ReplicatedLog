@@ -1,4 +1,7 @@
 #! /bin/bash
+
+docker network create replicated-log-network
+
 echo build-n-run Master
 bash build-n-run-master.bash
 

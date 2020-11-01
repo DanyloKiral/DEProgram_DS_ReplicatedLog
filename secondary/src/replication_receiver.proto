@@ -1,0 +1,11 @@
+service ReplicationReceiver {
+  rpc replicate_message(ReplicationRequest) returns (ReplicationResponse) {}
+}
+
+message ReplicationRequest {
+  required string message = 1;
+}
+
+message ReplicationResponse {
+  required bool success = 1;
+}

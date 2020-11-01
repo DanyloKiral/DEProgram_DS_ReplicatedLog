@@ -1,10 +1,11 @@
-from flask import make_response, jsonify, current_app
+from flask import make_response, jsonify
 from flask.views import MethodView
+from di_container import ServiceProviders
 
 
 class SecondaryNodeApi(MethodView):
     def __init__(self):
-        self.message_service = current_app.container.message_service_provider()
+        self.message_service = ServiceProviders.message_service_provider()
 
     def get(self):
         current_messages = self.message_service.get()
