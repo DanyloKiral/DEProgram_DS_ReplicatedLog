@@ -1,3 +1,5 @@
+import os
+
 import grpc
 
 from shared.replication_receiver_pb2 import ReplicationResponse, ReplicationRequest
@@ -6,7 +8,7 @@ from shared import replication_receiver_pb2_grpc
 
 class ReplicationSender:
     def __init__(self):
-        self.secondaries = ["secondary-node1:50051", "secondary-node2:50051"]
+        self.secondaries = (os.getenv('SECONDARY_ADDRESSES') or '').split(',')
 
     def replicate_message_to_secondaries(self, message):
         for address in self.secondaries:

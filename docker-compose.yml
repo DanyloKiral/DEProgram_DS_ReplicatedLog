@@ -1,0 +1,43 @@
+version: "3.8"
+services:
+  master-node:
+    build:
+      context: ./
+      dockerfile: master/Dockerfile
+    environment:
+      - SECONDARY_ADDRESSES=secondary-node1-address:50051,secondary-node2-address:50051
+    ports:
+      - 5000:5000
+    networks:
+      replicated-log-network:
+        aliases:
+          - master-node-address
+  secondary-node1:
+    build:
+      context: ./
+      dockerfile: secondary/Dockerfile
+    environment:
+      - API_PORT=5000
+      - GRPC_PORT=50051
+    ports:
+    - 5010:5000
+    networks:
+      replicated-log-network:
+        aliases:
+          - secondary-node1-address
+  secondary-node2:
+    build:
+      context: ./
+      dockerfile: secondary/Dockerfile
+    environment:
+      - API_PORT=5000
+      - GRPC_PORT=50051
+    ports:
+      - 5011:5000
+    networks:
+      replicated-log-network:
+        aliases:
+          - secondary-node2-address
+networks:
+  replicated-log-network:
+    name: replicated-log-network
