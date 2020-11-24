@@ -1,6 +1,8 @@
 import os
 from concurrent import futures
 from threading import Thread
+
+from di_container import ServicesContainer
 from replication_receiver import ReplicationReceiver
 from secondary_node_api import SecondaryNodeApi
 from flask import Flask

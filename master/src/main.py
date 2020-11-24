@@ -1,3 +1,4 @@
+from di_container import ServicesContainer
 from master_node_api import MasterNodeApi
 from flask import Flask
 
