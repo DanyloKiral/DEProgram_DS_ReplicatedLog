@@ -9,12 +9,17 @@ from flask import Flask
 import grpc
 
 from shared import replication_receiver_pb2_grpc
+from shared.errors import handle_general_error
 
 
 def start_http_server():
     api_port = os.getenv('API_PORT') or 5000
     app = Flask(__name__)
     app.add_url_rule("/api", view_func=SecondaryNodeApi.as_view("secondary_node_api"))
+
+    logger = ServicesContainer.logger()
+    app.register_error_handler(Exception, handle_general_error(logger))
+
     app.run(host='0.0.0.0', port=api_port)
 
 

@@ -1,3 +1,4 @@
+import os
 import random
 import time
 from logging import Logger
@@ -22,6 +23,8 @@ class ReplicationReceiver(replication_receiver_pb2_grpc.ReplicationReceiverServi
         return ReplicationResponse(success=True)
 
     def simulate_delay(self):
-        rand_delay_ms = random.randrange(1000, 3000, 50)
-        self.logger.info(f'Simulated delay = {rand_delay_ms}ms')
-        time.sleep(rand_delay_ms / 1000)
+        delay_ms = int(os.getenv('DELAY'))
+        if delay_ms < 0:
+            delay_ms = random.randrange(1000, 3000, 50)
+        self.logger.info(f'Simulated delay = {delay_ms}ms')
+        time.sleep(delay_ms / 1000)
