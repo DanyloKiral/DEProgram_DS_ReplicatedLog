@@ -1,3 +1,4 @@
+import json
 import os
 import random
 import time
@@ -15,11 +16,13 @@ class ReplicationReceiver(replication_receiver_pb2_grpc.ReplicationReceiverServi
         self.logger: Logger = ServicesContainer.logger()
 
     def replicate_message(self, request: ReplicationRequest, context):
-        message = request.message
-        self.logger.info(f'Receiving replication message from master. Message = "{message}"')
+        message: dict = json.loads(request.message)
+        message_content = message.get('content')
+        message_id = message.get('id')
+        self.logger.info(f'Receiving replication message from master. Message = "{message_content}"; Message ID = {message_id}')
         self.simulate_delay()
-        self.message_service.append(message)
-        self.logger.info(f'Replication is successful. Message = "{message}"')
+        self.message_service.append(message_content, message_id)
+        self.logger.info(f'Replication is successful. Message ID = {message_id}')
         return ReplicationResponse(success=True)
 
     def simulate_delay(self):

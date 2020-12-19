@@ -28,8 +28,8 @@ class MasterNodeApi(MethodView):
         write_concern = data.get('write_concern') or 1
         self.logger.info(f'POST request. Message = {message}; Write concern = {write_concern}')
 
-        self.message_service.append(message)
-        self.replication_sender.replicate_message_to_secondaries(message, write_concern - 1)
+        message_id = self.message_service.append(message)
+        self.replication_sender.replicate_message_to_secondaries(message, message_id, write_concern - 1)
 
         return make_response('', 200)
 
