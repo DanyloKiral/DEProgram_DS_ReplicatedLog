@@ -8,7 +8,6 @@ from logging import Logger
 
 from grpc.aio import AioRpcError
 
-from shared.errors import ReplicationNodesError
 from shared.replication_receiver_pb2 import ReplicationResponse, ReplicationRequest
 from shared import replication_receiver_pb2_grpc
 
@@ -17,8 +16,10 @@ class ReplicationSender:
     def __init__(self, logger):
         self.secondaries = (os.getenv('SECONDARY_ADDRESSES') or 'localhost:50051').split(',')
         self.logger: Logger = logger
+        self.current_write_concern = 0
 
     def replicate_message_to_secondaries(self, message, write_concern):
+        self.current_write_concern = write_concern
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
@@ -28,30 +29,12 @@ class ReplicationSender:
             current_task.add_done_callback(self.get_done_callback(address, message))
             tasks.append(current_task)
 
-        unfinished = tasks
-        confirmations_before_success = write_concern
-        while len(unfinished) >= confirmations_before_success > 0:
-            asyncio.set_event_loop(loop)
-            finished, unfinished = loop.run_until_complete(
-                asyncio.wait(unfinished, return_when=asyncio.FIRST_COMPLETED))
+        self.run_tasks_in_background(tasks)
 
-            for task in finished:
-                confirmation = task.result()
-                if confirmation:
-                    confirmations_before_success -= 1
-            self.logger.info(f'Sync task completed. Confirmations_before_success = {confirmations_before_success}')
+        while self.current_write_concern > 0:
+            pass
 
-        if confirmations_before_success > 0:
-            raise ReplicationNodesError()
-
-        if len(unfinished) > 0:
-            self.logger.info(f'Finishing Async tasks. Count = {len(unfinished)}')
-            self.run_tasks_in_background(unfinished)
-        else:
-            self.logger.info(f'No Async tasks to finish')
-            loop.close()
-
-        self.logger.info(f'All Sync tasks completed. Returning')
+        self.logger.info(f'Completed enough for write concern. Returning')
         return
 
     def run_tasks_in_background(self, tasks):
@@ -70,6 +53,7 @@ class ReplicationSender:
         def done_callback(result: Task):
             success = result.result()
             if success:
+                self.current_write_concern -= 1
                 self.logger.info(f'Task finished successfully!. Address = {address}')
             else:
                 self.logger.error(f'Task failed!. Address = {address}; Retry to be implemented...')
@@ -79,6 +63,7 @@ class ReplicationSender:
         async with grpc.aio.insecure_channel(address) as channel:
             self.logger.info(f'Replicating message to secondary {address}')
             try:
+                await channel.channel_ready()
                 stub = replication_receiver_pb2_grpc.ReplicationReceiverStub(channel)
                 response: ReplicationResponse = await stub.replicate_message(ReplicationRequest(message=message))
                 if response.success:

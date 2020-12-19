@@ -25,6 +25,6 @@ class ReplicationReceiver(replication_receiver_pb2_grpc.ReplicationReceiverServi
     def simulate_delay(self):
         delay_ms = int(os.getenv('DELAY'))
         if delay_ms < 0:
-            delay_ms = random.randrange(1000, 3000, 50)
+            delay_ms = random.randrange(3000, 15000, 50)
         self.logger.info(f'Simulated delay = {delay_ms}ms')
         time.sleep(delay_ms / 1000)
