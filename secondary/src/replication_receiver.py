@@ -19,10 +19,13 @@ class ReplicationReceiver(replication_receiver_pb2_grpc.ReplicationReceiverServi
         message: dict = json.loads(request.message)
         message_content = message.get('content')
         message_id = message.get('id')
-        self.logger.info(f'Receiving replication message from master. Message = "{message_content}"; Message ID = {message_id}')
+        self.logger.info(f'Received replication message from master. Message = "{message_content}"; Message ID = {message_id}')
         self.simulate_delay()
-        self.message_service.append(message_content, message_id)
-        self.logger.info(f'Replication is successful. Message ID = {message_id}')
+        added = self.message_service.append(message_content, message_id)
+        if added:
+            self.logger.info(f'Replication is successful. Message ID = {message_id}')
+        else:
+            self.logger.info(f'Message with ID = {message_id} was already replicated')
         return ReplicationResponse(success=True)
 
     def simulate_delay(self):

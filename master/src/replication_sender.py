@@ -30,7 +30,7 @@ class ReplicationSender:
             current_task.add_done_callback(self.get_done_callback(address, message, message_id))
             tasks.append(current_task)
 
-        self.run_tasks_in_background(tasks)
+        self.run_tasks_in_background(tasks, message_id)
 
         while self.current_write_concern > 0:
             pass
@@ -38,16 +38,15 @@ class ReplicationSender:
         self.logger.info(f'Completed enough for write concern. Returning')
         return
 
-    def run_tasks_in_background(self, tasks):
+    def run_tasks_in_background(self, tasks, message_id):
         def loop_in_thread(tasks_to_run, loop):
             asyncio.set_event_loop(loop)
             loop.run_until_complete(asyncio.gather(*tasks_to_run))
-            self.logger.info('All Async tasks completed')
+            self.logger.info(f'All Async tasks completed for Message with ID = {message_id}')
             loop.close()
 
         current_loop = asyncio.get_event_loop()
-        thread = threading.Thread(target=loop_in_thread, args=(tasks, current_loop))
-        self.logger.info(f'Running Async tasks in another thread. Tasks count = {len(tasks)}')
+        thread = threading.Thread(target=loop_in_thread, args=(tasks, current_loop))#
         thread.start()
 
     def get_done_callback(self, address, message, message_id):
@@ -55,9 +54,9 @@ class ReplicationSender:
             success = result.result()
             if success:
                 self.current_write_concern -= 1
-                self.logger.info(f'Task finished successfully!. Address = {address}. Message ID = {message_id}')
             else:
-                self.logger.error(f'Task failed!. Address = {address}; Message ID = {message_id}; Retry to be implemented...')
+                # retrying
+                pass
         return done_callback
 
     async def replicate_message(self, address, message, message_id):
