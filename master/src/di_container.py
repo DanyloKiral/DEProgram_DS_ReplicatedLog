@@ -9,6 +9,6 @@ class ServicesContainer(containers.DeclarativeContainer):
     config = providers.Configuration()
     logger = providers.ThreadSafeSingleton(get_module_logger)
     message_service_provider = providers.ThreadSafeSingleton(MessageService)
-    replication_sender_provider = providers.Factory(ReplicationSender, logger=logger)
+    replication_sender_provider = providers.ThreadSafeSingleton(ReplicationSender, logger=logger)
 
 
