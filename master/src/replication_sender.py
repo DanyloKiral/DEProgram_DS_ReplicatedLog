@@ -26,8 +26,7 @@ class ReplicationSender:
 
         tasks = []
         for address in self.secondaries:
-            current_task = loop.create_task(self.replicate_message(address, message, message_id))
-            current_task.add_done_callback(self.get_done_callback(address, message, message_id))
+            current_task = loop.create_task(self.replicate_message_with_retry(address, message, message_id))
             tasks.append(current_task)
 
         self.run_tasks_in_background(tasks, message_id)
@@ -35,43 +34,43 @@ class ReplicationSender:
         while self.current_write_concern > 0:
             pass
 
-        self.logger.info(f'Completed enough for write concern. Returning')
+        self.logger.info(f'Message #{message_id}: Completed enough for write concern. Returning')
         return
 
     def run_tasks_in_background(self, tasks, message_id):
         def loop_in_thread(tasks_to_run, loop):
             asyncio.set_event_loop(loop)
             loop.run_until_complete(asyncio.gather(*tasks_to_run))
-            self.logger.info(f'All Async tasks completed for Message with ID = {message_id}')
+            self.logger.info(f'Message #{message_id}: All replication tasks completed')
             loop.close()
 
         current_loop = asyncio.get_event_loop()
         thread = threading.Thread(target=loop_in_thread, args=(tasks, current_loop))#
         thread.start()
 
-    def get_done_callback(self, address, message, message_id):
-        def done_callback(result: Task):
-            success = result.result()
-            if success:
-                self.current_write_concern -= 1
-            else:
-                # retrying
-                pass
-        return done_callback
+    async def replicate_message_with_retry(self, address, message, message_id):
+        success = await self.send_message_replication(address, message, message_id)
+        retry_number = 0
+        while not success:
+            retry_number += 1
+            await asyncio.sleep(((retry_number // 5) + 1) * 3)
+            self.logger.info(f'Message #{message_id}: Retry #{retry_number} to {address}')
+            success = await self.send_message_replication(address, message, message_id)
+        self.current_write_concern -= 1
+        return success
 
-    async def replicate_message(self, address, message, message_id):
+    async def send_message_replication(self, address, message, message_id):
         async with grpc.aio.insecure_channel(address) as channel:
-            self.logger.info(f'Replicating message with ID = {message_id} to secondary {address}')
+            self.logger.info(f'Message #{message_id}: Replicating to secondary {address}')
             try:
-                await channel.channel_ready()
                 stub = replication_receiver_pb2_grpc.ReplicationReceiverStub(channel)
                 message_json = json.dumps({'content': message, 'id': message_id})
                 payload = ReplicationRequest(message=message_json)
                 response: ReplicationResponse = await stub.replicate_message(payload)
                 if response.success:
-                    self.logger.info(f"Replication message with ID = {message_id} to {address} is successful")
+                    self.logger.info(f"Message #{message_id}: Replication to {address} is successful")
                 else:
-                    self.logger.error(f"Replication message with ID = {message_id} to {address} failed")
+                    self.logger.error(f"Message #{message_id}: Replication to {address} failed")
                 return response.success
             except AioRpcError as rpcError:
                 self.logger.error(f'gRPC error. Address = {address}. Details: {rpcError}. Message with ID = {message_id}')
