@@ -7,17 +7,56 @@ from typing import List
 import grpc
 from logging import Logger
 from grpc.aio import AioRpcError
-from shared.replication_receiver_pb2 import ReplicationRequest, ReplicateMessageModel, Response
+from shared.replication_receiver_pb2 import ReplicationRequest, ReplicateMessageModel, Response, Empty
 from shared import replication_receiver_pb2_grpc
 
 
 class ReplicationSender:
     def __init__(self, logger):
         self.secondaries = (os.getenv('SECONDARY_ADDRESSES') or 'localhost:50051').split(',')
+        self.heartbeat_interval_sec = 5
         self.logger: Logger = logger
         self.message_replications_left: dict = dict()
         self.address_messages_to_retry: dict = defaultdict(lambda: [])
         self.address_retry_delay: dict = defaultdict(lambda: 3)
+        self.node_statuses: dict = dict()
+
+    def schedule_heartbeat_checks(self):
+        def loop_in_thread(task_to_run, loop):
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(task_to_run)
+            loop.close()
+
+        for address in self.secondaries:
+            current_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(current_loop)
+            task = current_loop.create_task(self.run_heartbeat_check(address))
+            thread = threading.Thread(target=loop_in_thread, args=(task, current_loop))  #
+            thread.start()
+
+    async def run_heartbeat_check(self, address):
+        async with grpc.aio.insecure_channel(address) as channel:
+            await channel.channel_ready()
+            stub = replication_receiver_pb2_grpc.ReplicationReceiverStub(channel)
+            while True:
+                self.logger.info(f'Heartbeat to {address}: sending')
+                success = False
+                try:
+                    response: Response = await stub.heartbeat(Empty())
+                    success = response.success
+                    if success:
+                        self.logger.info(f'Heartbeat to {address}: success')
+                    else:
+                        self.logger.info(f'Heartbeat to {address}: failed')
+                except AioRpcError as rpcError:
+                    self.logger.info(f'Heartbeat to {address}: failed due to grpc error')
+                finally:
+                    self.node_statuses[address] = success
+                    if success:
+                        pass
+                    else:
+                        pass
+                    await asyncio.sleep(self.heartbeat_interval_sec)
 
     def replicate_message_to_secondaries(self, message, message_id, write_concern):
         self.message_replications_left[message_id] = write_concern
@@ -88,8 +127,8 @@ class ReplicationSender:
 
     async def send_message_replication(self, address, messages: List[ReplicateMessageModel]):
         message_ids = ', '.join([str(m.id) for m in messages])
+        self.logger.info(f'Messages #{message_ids}: Replicating to secondary {address}')
         async with grpc.aio.insecure_channel(address) as channel:
-            self.logger.info(f'Messages #{message_ids}: Replicating to secondary {address}')
             try:
                 stub = replication_receiver_pb2_grpc.ReplicationReceiverStub(channel)
                 payload = ReplicationRequest(messages=messages)

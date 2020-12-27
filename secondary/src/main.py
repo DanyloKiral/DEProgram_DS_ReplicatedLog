@@ -1,5 +1,5 @@
+import asyncio
 import os
-from concurrent import futures
 from threading import Thread
 
 from di_container import ServicesContainer
@@ -23,19 +23,23 @@ def start_http_server():
     app.run(host='0.0.0.0', port=api_port)
 
 
-def start_grpc_server():
+async def start_grpc_server():
     grpc_port = os.getenv('GRPC_PORT') or 50051
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    server = grpc.aio.server()
     replication_receiver_pb2_grpc.add_ReplicationReceiverServicer_to_server(
         ReplicationReceiver(), server)
     server.add_insecure_port(f'[::]:{grpc_port}')
-    server.start()
-    server.wait_for_termination()
+    await server.start()
+    await server.wait_for_termination()
+
+
+def run_grpc():
+    asyncio.run(start_grpc_server())
 
 
 def main():
     task1 = Thread(target=start_http_server, args=[])
-    task2 = Thread(target=start_grpc_server, args=[])
+    task2 = Thread(target=run_grpc, args=[])
     task1.start()
     task2.start()
 

@@ -1,8 +1,15 @@
 from di_container import ServicesContainer
 from master_node_api import MasterNodeApi
 from flask import Flask
+
+from replication_sender import ReplicationSender
 from shared.errors import handle_general_error, handle_bad_request_error, BadRequestError, ReplicationNodesError, \
     handle_replication_error
+
+
+def start_heartbeats():
+    replication_sender: ReplicationSender = ServicesContainer.replication_sender_provider()
+    replication_sender.schedule_heartbeat_checks()
 
 
 def start_http_server():
@@ -18,4 +25,6 @@ def start_http_server():
 
 
 if __name__ == "__main__":
+    start_heartbeats()
     start_http_server()
+

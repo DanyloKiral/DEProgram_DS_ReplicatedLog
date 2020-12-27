@@ -15,6 +15,7 @@ class ReplicationReceiver(replication_receiver_pb2_grpc.ReplicationReceiverServi
         self.logger: Logger = ServicesContainer.logger()
 
     def heartbeat(self, request, context):
+        self.logger.info('Heartbeat received')
         return Response(success=True)
 
     def replicate_message(self, request: ReplicationRequest, context):
