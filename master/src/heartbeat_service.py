@@ -6,14 +6,16 @@ import grpc
 from grpc.aio import AioRpcError
 
 from nodes_state import NodesState
+from replication_sender import ReplicationSender
 from shared import replication_receiver_pb2_grpc
 from shared.replication_receiver_pb2 import Response, Empty
 
 
 class HeartbeatService:
-    def __init__(self, logger: Logger, nodes_state: NodesState):
+    def __init__(self, logger: Logger, nodes_state: NodesState, replication_sender):
         self._logger: Logger = logger
         self._nodes_state: NodesState = nodes_state
+        self._replication_sender: ReplicationSender = replication_sender
         self._heartbeat_interval_sec = 5
 
     def schedule_heartbeat_checks(self):
@@ -48,7 +50,6 @@ class HeartbeatService:
                 finally:
                     self._nodes_state.set_node_status(address, success)
                     if success:
-                        pass
-                    else:
+                        # trigger retry if needed
                         pass
                     await asyncio.sleep(self._heartbeat_interval_sec)

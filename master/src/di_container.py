@@ -12,6 +12,14 @@ class ServicesContainer(containers.DeclarativeContainer):
     logger = providers.ThreadSafeSingleton(get_module_logger)
     nodes_state_provider = providers.ThreadSafeSingleton(NodesState)
     message_service_provider = providers.ThreadSafeSingleton(MessageService)
-    replication_sender_provider = providers.ThreadSafeSingleton(ReplicationSender, logger=logger, nodes_state=nodes_state_provider)
-    heartbeat_service_provider = providers.ThreadSafeSingleton(HeartbeatService, logger=logger, nodes_state=nodes_state_provider)
+    replication_sender_provider = providers.ThreadSafeSingleton(
+        ReplicationSender,
+        logger=logger,
+        nodes_state=nodes_state_provider)
+
+    heartbeat_service_provider = providers.ThreadSafeSingleton(
+        HeartbeatService,
+        logger=logger,
+        nodes_state=nodes_state_provider,
+        replication_sender=replication_sender_provider)
 
