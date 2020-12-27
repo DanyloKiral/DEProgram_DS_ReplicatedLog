@@ -7,14 +7,13 @@ from message_service import MessageService
 from replication_sender import ReplicationSender
 
 
-class MasterNodeApi(MethodView):
+class MessageApi(MethodView):
     def __init__(self):
         self.message_service: MessageService = ServicesContainer.message_service_provider()
         self.replication_sender: ReplicationSender = ServicesContainer.replication_sender_provider()
         self.logger: Logger = ServicesContainer.logger()
 
     def get(self):
-        self.logger.info('GET request')
         current_messages = self.message_service.get()
         return make_response(jsonify(current_messages), 200)
 

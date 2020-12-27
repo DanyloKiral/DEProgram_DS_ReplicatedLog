@@ -13,6 +13,5 @@ class SecondaryNodeApi(MethodView):
         self.logger: Logger = ServicesContainer.logger()
 
     def get(self):
-        self.logger.info('GET request')
         current_messages = self.message_service.get()
         return make_response(jsonify(current_messages), 200)
