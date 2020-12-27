@@ -2,7 +2,7 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-from shared import replication_receiver_pb2 as replication__receiver__pb2
+from shared import replication_receiver_pb2 as secondary_dot_replication__receiver__pb2
 
 
 class ReplicationReceiverStub(object):
@@ -16,8 +16,13 @@ class ReplicationReceiverStub(object):
         """
         self.replicate_message = channel.unary_unary(
                 '/ReplicationReceiver/replicate_message',
-                request_serializer=replication__receiver__pb2.ReplicationRequest.SerializeToString,
-                response_deserializer=replication__receiver__pb2.ReplicationResponse.FromString,
+                request_serializer=secondary_dot_replication__receiver__pb2.ReplicationRequest.SerializeToString,
+                response_deserializer=secondary_dot_replication__receiver__pb2.Response.FromString,
+                )
+        self.heartbeat = channel.unary_unary(
+                '/ReplicationReceiver/heartbeat',
+                request_serializer=secondary_dot_replication__receiver__pb2.Empty.SerializeToString,
+                response_deserializer=secondary_dot_replication__receiver__pb2.Response.FromString,
                 )
 
 
@@ -30,13 +35,24 @@ class ReplicationReceiverServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def heartbeat(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ReplicationReceiverServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'replicate_message': grpc.unary_unary_rpc_method_handler(
                     servicer.replicate_message,
-                    request_deserializer=replication__receiver__pb2.ReplicationRequest.FromString,
-                    response_serializer=replication__receiver__pb2.ReplicationResponse.SerializeToString,
+                    request_deserializer=secondary_dot_replication__receiver__pb2.ReplicationRequest.FromString,
+                    response_serializer=secondary_dot_replication__receiver__pb2.Response.SerializeToString,
+            ),
+            'heartbeat': grpc.unary_unary_rpc_method_handler(
+                    servicer.heartbeat,
+                    request_deserializer=secondary_dot_replication__receiver__pb2.Empty.FromString,
+                    response_serializer=secondary_dot_replication__receiver__pb2.Response.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -60,7 +76,24 @@ class ReplicationReceiver(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/ReplicationReceiver/replicate_message',
-            replication__receiver__pb2.ReplicationRequest.SerializeToString,
-            replication__receiver__pb2.ReplicationResponse.FromString,
+            secondary_dot_replication__receiver__pb2.ReplicationRequest.SerializeToString,
+            secondary_dot_replication__receiver__pb2.Response.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def heartbeat(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/ReplicationReceiver/heartbeat',
+            secondary_dot_replication__receiver__pb2.Empty.SerializeToString,
+            secondary_dot_replication__receiver__pb2.Response.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

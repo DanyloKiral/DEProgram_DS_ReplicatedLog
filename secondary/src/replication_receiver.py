@@ -1,11 +1,10 @@
-import json
 import os
 import random
 import time
 from logging import Logger
 
 from di_container import ServicesContainer
-from shared.replication_receiver_pb2 import ReplicationRequest, ReplicationResponse
+from shared.replication_receiver_pb2 import ReplicationRequest, Response, ReplicateMessageModel
 from shared import replication_receiver_pb2_grpc
 from message_service import MessageService
 
@@ -15,23 +14,24 @@ class ReplicationReceiver(replication_receiver_pb2_grpc.ReplicationReceiverServi
         self.message_service: MessageService = ServicesContainer.message_service_provider()
         self.logger: Logger = ServicesContainer.logger()
 
+    def heartbeat(self, request, context):
+        return Response(success=True)
+
     def replicate_message(self, request: ReplicationRequest, context):
         if self.should_simulate_error():
             self.logger.error(f'Simulating error')
-            return ReplicationResponse(success=False)
+            return Response(success=False)
 
-        messages: list[dict] = sorted(json.loads(request.message), key=lambda v: v.get('id'))
+        messages: list[ReplicateMessageModel] = sorted(request.messages, key=lambda v: v.id)
         for message in messages:
-            message_content = message.get('content')
-            message_id = message.get('id')
-            self.logger.info(f'Received replication message from master. Message = "{message_content}"; Message ID = {message_id}')
+            self.logger.info(f'Received replication message from master. Message = "{message.content}"; Message ID = {message.id}')
             self.simulate_delay()
-            added = self.message_service.append(message_content, message_id)
+            added = self.message_service.append(message.content, message.id)
             if added:
-                self.logger.info(f'Replication is successful. Message ID = {message_id}')
+                self.logger.info(f'Replication is successful. Message ID = {message.id}')
             else:
-                self.logger.info(f'Message with ID = {message_id} was already replicated')
-        return ReplicationResponse(success=True)
+                self.logger.info(f'Message with ID = {message.id} was already replicated')
+        return Response(success=True)
 
     def simulate_delay(self):
         delay_ms = int(os.getenv('DELAY'))

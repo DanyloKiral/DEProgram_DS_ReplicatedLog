@@ -1,5 +1,4 @@
 import asyncio
-import json
 import os
 import threading
 from collections import defaultdict
@@ -8,7 +7,7 @@ from typing import List
 import grpc
 from logging import Logger
 from grpc.aio import AioRpcError
-from shared.replication_receiver_pb2 import ReplicationResponse, ReplicationRequest
+from shared.replication_receiver_pb2 import ReplicationRequest, ReplicateMessageModel, Response
 from shared import replication_receiver_pb2_grpc
 
 
@@ -18,7 +17,7 @@ class ReplicationSender:
         self.logger: Logger = logger
         self.message_replications_left: dict = dict()
         self.address_messages_to_retry: dict = defaultdict(lambda: [])
-        self.address_retry_delay: dict = defaultdict(lambda: 5)
+        self.address_retry_delay: dict = defaultdict(lambda: 3)
 
     def replicate_message_to_secondaries(self, message, message_id, write_concern):
         self.message_replications_left[message_id] = write_concern
@@ -52,13 +51,20 @@ class ReplicationSender:
         thread.start()
 
     async def replicate_message_with_retry(self, address, message, message_id):
-        data = {'id': message_id, 'content': message}
+        data = ReplicateMessageModel(id=message_id, content=message)
         success = await self.send_message_replication(address, [data])
-        if success:
-            self.update_replications_left_for_message(message_id)
-            return success
-        self.address_messages_to_retry[address].append(data)
-        success = await self.retry(address)
+        retry_number = 0
+        while not success:
+            retry_number += 1
+            await asyncio.sleep(((retry_number // 5) + 1) * 3)
+            self.logger.info(f'Message #{message_id}: Retry #{retry_number} to {address}')
+            success = await self.send_message_replication(address, [data])
+        self.update_replications_left_for_message(message_id)
+        # if success:
+        #     self.update_replications_left_for_message(message_id)
+        #     return success
+        # self.address_messages_to_retry[address].append(data)
+        # success = await self.retry(address)
         return success
 
     async def retry(self, address):
@@ -67,7 +73,7 @@ class ReplicationSender:
             await asyncio.sleep(self.address_retry_delay[address])
             if len(self.address_messages_to_retry[address]) == 0:
                 return False
-            #self.address_retry_delay[address] *= 1.5
+            self.address_retry_delay[address] *= 1.2
             self.logger.info(f'Retry to {address}')
 
             data_to_retry = self.address_messages_to_retry.pop(address)
@@ -80,15 +86,14 @@ class ReplicationSender:
         self.address_retry_delay.pop(address)
         return True
 
-    async def send_message_replication(self, address, data: List[dict]):
-        message_ids = ', '.join([str(m.get('id')) for m in data])
+    async def send_message_replication(self, address, messages: List[ReplicateMessageModel]):
+        message_ids = ', '.join([str(m.id) for m in messages])
         async with grpc.aio.insecure_channel(address) as channel:
             self.logger.info(f'Messages #{message_ids}: Replicating to secondary {address}')
             try:
                 stub = replication_receiver_pb2_grpc.ReplicationReceiverStub(channel)
-                message_json = json.dumps(data)
-                payload = ReplicationRequest(message=message_json)
-                response: ReplicationResponse = await stub.replicate_message(payload)
+                payload = ReplicationRequest(messages=messages)
+                response: Response = await stub.replicate_message(payload)
                 if response.success:
                     self.logger.info(f"Messages #{message_ids}: Replication to {address} is successful")
                 else:

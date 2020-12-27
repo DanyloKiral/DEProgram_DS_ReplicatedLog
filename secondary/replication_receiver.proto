@@ -1,11 +1,21 @@
+syntax = "proto2";
+
 service ReplicationReceiver {
-  rpc replicate_message(ReplicationRequest) returns (ReplicationResponse) {}
+  rpc replicate_message(ReplicationRequest) returns (Response) {}
+  rpc heartbeat(Empty) returns (Response) {}
 }
 
 message ReplicationRequest {
-  required string message = 1;
+  repeated ReplicateMessageModel messages = 1;
 }
 
-message ReplicationResponse {
+message ReplicateMessageModel {
+  required int32 id = 1;
+  required string content = 2;
+}
+
+message Response {
   required bool success = 1;
 }
+
+message Empty { }
