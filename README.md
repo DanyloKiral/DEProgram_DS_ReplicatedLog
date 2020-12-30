@@ -52,6 +52,14 @@ Response example:
 ["first message", "second message"]
 ```
 
+#### GET /api/health
+Returns secondaries health.
+Response example:
+
+```json
+{"secondary-address1": "Healthy", "secondary-address2": "Unhealthy"}
+```
+
 ### Secondary node
 #### GET /api
 Returns secondary's in-memory replicated messages list.
