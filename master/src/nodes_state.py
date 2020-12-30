@@ -1,18 +1,28 @@
 import os
 from collections import defaultdict
+import constants
 
 
 class NodesState:
     def __init__(self):
         self._secondaries = (os.getenv('SECONDARY_ADDRESSES') or 'localhost:50051').split(',')
         self._nodes_messages_to_retry: dict = defaultdict(lambda: [])
-        self._node_statuses: dict = dict()
+        self._node_statuses: dict = defaultdict(lambda: constants.NODE_HEALTH_UNHEALTHY)
 
     def get_nodes_addresses(self):
         return self._secondaries
 
-    def set_node_status(self, address, status):
-        self._node_statuses[address] = status
+    def set_node_status(self, address, heartbeat_success):
+        current_status = self._node_statuses[address]
+
+        if heartbeat_success:
+            new_status = constants.NODE_HEALTH_HEALTHY
+        elif current_status == constants.NODE_HEALTH_HEALTHY:
+            new_status = constants.NODE_HEALTH_SUSPECTED
+        else:
+            new_status = constants.NODE_HEALTH_UNHEALTHY
+
+        self._node_statuses[address] = new_status
 
     def get_node_status(self, address):
         return self._node_statuses[address]

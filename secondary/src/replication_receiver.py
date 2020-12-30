@@ -16,7 +16,8 @@ class ReplicationReceiver(replication_receiver_pb2_grpc.ReplicationReceiverServi
         self.message_service: MessageService = ServicesContainer.message_service_provider()
         self.logger: Logger = ServicesContainer.logger()
 
-    def heartbeat(self, request, context):
+    async def heartbeat(self, request, context):
+        #await asyncio.sleep(1)
         return Response(success=True)
 
     async def replicate_message(self, request: ReplicationRequest, context):
