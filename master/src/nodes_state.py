@@ -39,3 +39,12 @@ class NodesState:
     def append_node_message_to_retry(self, address, message):
         self._nodes_messages_to_retry[address].append(message)
 
+    def number_of_nodes(self):
+        return len(self._secondaries) + 1
+
+    def number_of_unavailable_nodes(self):
+        return len([status for status in self._node_statuses.values() if status != constants.NODE_HEALTH_HEALTHY])
+
+    def has_master_quorum(self):
+        return (self.number_of_nodes() // 2) >= self.number_of_unavailable_nodes()
+

@@ -25,10 +25,11 @@ class ReplicationReceiver(replication_receiver_pb2_grpc.ReplicationReceiverServi
             self.logger.error(f'Simulating error')
             return Response(success=False)
 
+        await self.simulate_delay()
+
         messages: List[ReplicateMessageModel] = sorted(request.messages, key=lambda v: v.id)
         for message in messages:
             self.logger.info(f'Received replication message from master. Message = "{message.content}"; Message ID = {message.id}')
-            await self.simulate_delay()
             added = self.message_service.append(message.content, message.id)
             if added:
                 self.logger.info(f'Replication is successful. Message ID = {message.id}')
